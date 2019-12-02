@@ -12,7 +12,6 @@
 /captures
 .externalNativeBuild
 .cxx
-/.gitignore
 ### Kotlin template
 # Compiled class file
 *.class
