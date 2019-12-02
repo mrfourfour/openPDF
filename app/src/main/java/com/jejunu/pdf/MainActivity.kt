@@ -1,73 +1,99 @@
 package com.jejunu.pdf
 
-import android.content.ActivityNotFoundException
+import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.FileProvider
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
-    val rootPath = File(Environment.getExternalStorageDirectory().absolutePath)
-    var filename: String? = null
+
+    val READPERMISSIONREQUEST = 100
+    val GETPDF = 999
+    var granted = false
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
+        checkPermission()
         button.setOnClickListener {
-            val intent = Intent(Intent.ACTION_GET_CONTENT)
-            intent.type = "application/*"
-            startActivityForResult(intent, 10)
-
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "application/pdf"
+                }
+            startActivityForResult(intent, GETPDF)
         }
 
     }
+
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        when (requestCode) {
-            10 -> {
-                var path: String? = data?.data?.toString()
-                Log.i("me", path)
-                viewPDF.setText(path)
-                openPdf(path)
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == GETPDF && resultCode == Activity.RESULT_OK) {
+            data?.data?.path.also { uri ->
+                Log.i("me", "Uri:$uri")
+                viewPDF.text = uri.toString()
+                Log.i("me", getPathFromUri(data?.data!!))
             }
         }
     }
 
 
-    fun openPdf(contentsPath: String?) {
-        var pdfFile = File(contentsPath)
-        Log.i("me", contentsPath)
-        var path = Uri.fromFile(pdfFile)
-        if (pdfFile.exists()) {
-
-        }
-        try {
-            var intent = Intent(Intent.ACTION_VIEW)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                var contentUri =
-                    FileProvider.getUriForFile(applicationContext,"com.jejunu.pdf",pdfFile )
-                intent.setDataAndType(contentUri, "application/pdf")
-                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-
-                startActivity(intent)
-
+    fun checkPermission() {
+        val permissionCheck = ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+        )
+        when {
+            permissionCheck != PackageManager.PERMISSION_GRANTED -> {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(android.Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                    READPERMISSIONREQUEST
+                )
             }
-        } catch (e: ActivityNotFoundException) {
-            Toast.makeText(this, "PDF 파일을 열 수 있는 앱이 없습니다.", Toast.LENGTH_SHORT).show()
         }
-//        else {
-//            Toast.makeText(this, "PDF 파일이 없습니다.", Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        when (requestCode) {
+            READPERMISSIONREQUEST -> {
+                when {
+                    grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED -> {
+                        granted = true
+                    }
+                    else -> {
+                        granted = false
+                    }
+                }
+            }
+        }
+    }
+
+    fun getPathFromUri(uri: Uri): String {
+        var proj = arrayOf(MediaStore.Files.FileColumns.DATA)
+        var cursor = contentResolver.query(uri, proj, null, null, null)
+        cursor?.moveToNext()
+        var path: String = cursor!!.getString(cursor.getColumnIndex("_data"))
+        var uri2 = Uri.fromFile(File(path))
+        Log.i("me", uri2.toString())
+        cursor.close()
+        return path
     }
 
 }
+
