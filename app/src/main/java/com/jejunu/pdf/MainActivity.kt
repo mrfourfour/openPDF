@@ -3,7 +3,6 @@ package com.jejunu.pdf
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
-import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -22,8 +21,6 @@ class MainActivity : AppCompatActivity() {
 
     val PERMISSION_REQUEST = 100
     val GETPDF = 999
-    var granted = false
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,16 +65,16 @@ class MainActivity : AppCompatActivity() {
                 AlertDialog.Builder(this)
                     .setTitle("알림")
                     .setMessage("저장소 권한이 거부되었습니다. 사용을 원하시면 설정에서 해당 권한을 직접 허용하셔야합니다.")
-                    .setNeutralButton("설정", DialogInterface.OnClickListener { dialogInterface, i ->
+                    .setNeutralButton("설정") { dialogInterface, i ->
                         val intentSettings = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                         intentSettings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         val uriSettings = Uri.fromParts("package", packageName, null)
                         intentSettings.data = uriSettings
                         startActivity(intentSettings)
-                    })
+                    }
                     .setPositiveButton(
-                        "확인",
-                        DialogInterface.OnClickListener { dialogInterface, i -> finish() })
+                        "확인"
+                    ) { dialogInterface, i -> finish() }
                     .setCancelable(false)
                     .create()
                     .show()
@@ -98,15 +95,19 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         when (requestCode) {
-            PERMISSION_REQUEST ->
+            PERMISSION_REQUEST -> {
                 for (i in grantResults) {
                     // -1일 경우 퍼미션 없음
                     if (grantResults[i] < 0) {
-                        Toast.makeText(this, "해당 권한을 활성화 하셔야 합니다.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            applicationContext,
+                            "해당 권한을 활성화 하셔야 합니다.",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         return
                     }
                 }
-
+            }
         }
     }
 
